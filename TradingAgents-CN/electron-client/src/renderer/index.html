@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TradingAgents-CN 客户端配置向导</title>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        margin: 0;
+        background: #f5f7fb;
+        color: #1f2937;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 24px auto;
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+      }
+      .title {
+        font-size: 22px;
+        margin-bottom: 8px;
+      }
+      .muted {
+        color: #6b7280;
+        font-size: 13px;
+      }
+      .panel {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 16px;
+        margin-top: 16px;
+      }
+      .panel h3 {
+        margin: 0 0 10px 0;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+      }
+      .row > * {
+        flex: 1;
+      }
+      input, textarea, button, select {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        padding: 10px;
+      }
+      button {
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 12px;
+        border-radius: 999px;
+        padding: 4px 8px;
+      }
+      .badge.required { background: #fee2e2; color: #991b1b; }
+      .badge.recommended { background: #fef3c7; color: #92400e; }
+      .badge.optional { background: #e5e7eb; color: #374151; }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .field {
+        border: 1px solid #eef2f7;
+        border-radius: 8px;
+        padding: 10px;
+        background: #fafcff;
+      }
+      .field label {
+        font-size: 12px;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 8px;
+      }
+      .field .desc {
+        margin: 0 0 8px 0;
+        font-size: 12px;
+        color: #4b5563;
+        white-space: pre-wrap;
+      }
+      .field .links {
+        margin: 0 0 8px 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .field .links a {
+        font-size: 12px;
+        color: #1d4ed8;
+        text-decoration: none;
+        word-break: break-all;
+      }
+      .field .links a:hover {
+        text-decoration: underline;
+      }
+      .alert {
+        margin-top: 10px;
+        font-size: 13px;
+      }
+      .ok { color: #166534; }
+      .err { color: #b91c1c; }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="title">TradingAgents-CN 配置中心</div>
+      <div class="muted">安装阶段已完成激活校验。当前客户端仅用于修改 `.env` 配置。</div>
+
+      <div class="panel" id="configPanel">
+        <h3>填写配置文件</h3>
+        <div class="muted">字段根据项目 `.env.example` 自动生成。建议先填写必需项，再补充推荐项。</div>
+        <div class="row" style="margin-top: 12px">
+          <div>
+            <label class="muted">当前设备 ID（用于排查激活问题）</label>
+            <input id="deviceIdInput" disabled />
+          </div>
+        </div>
+        <div id="envGrid" class="grid" style="margin-top: 12px"></div>
+        <div style="margin-top: 12px">
+          <button id="saveEnvBtn">保存 .env 配置</button>
+        </div>
+        <div id="envStatus" class="alert muted"></div>
+      </div>
+    </div>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "nuxtjs",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
+    "ant-design-vue": "^4.2.6",
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.2",
+    "nuxt": "^4.4.2",
+    "pg": "^8.20.0",
+    "vue": "^3.5.32",
+    "vue-router": "^5.0.4",
+    "zod": "^4.3.6"
+  }
+}

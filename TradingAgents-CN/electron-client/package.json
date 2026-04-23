@@ -1,0 +1,42 @@
+{
+  "name": "tradingagents-cn-electron-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TradingAgents-CN Electron activation and config client",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build:win": "electron-builder --win nsis",
+    "build:win:cn": "set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/&& set ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/&& electron-builder --win nsis",
+    "build:mac": "electron-builder --mac dmg",
+    "build:mac:cn": "set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/&& set ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/&& electron-builder --mac dmg"
+  },
+  "dependencies": {
+    "jose": "^6.2.2"
+  },
+  "devDependencies": {
+    "electron": "^36.3.2",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.tradingagents.cn.client",
+    "productName": "TradingAgents-CN Client",
+    "files": [
+      "src/**/*"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "include": "build/installer/installer-hooks.nsh"
+    }
+  }
+}
