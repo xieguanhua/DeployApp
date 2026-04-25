@@ -37,7 +37,10 @@ export default defineEventHandler(async (event) => {
     }
     const key = keyRow.rows[0];
     if (key.status === "revoked") {
-      throw createError({ statusCode: 403, statusMessage: "激活码已禁用" });
+      throw createError({ statusCode: 403, statusMessage: "渠道码已作废" });
+    }
+    if (key.allocated_user_id && Number(key.allocated_user_id) <= 0) {
+      throw createError({ statusCode: 403, statusMessage: "渠道码状态异常" });
     }
     if (body.productCode && body.productCode !== key.product_code) {
       throw createError({ statusCode: 403, statusMessage: "激活码产品类型不匹配" });
@@ -48,7 +51,7 @@ export default defineEventHandler(async (event) => {
 
     if (!key.assigned_device_id) {
       await client.query(
-        "UPDATE activation_keys SET assigned_device_id = $1, status = 'activated', activated_at = now() WHERE key_code = $2",
+        "UPDATE activation_keys SET assigned_device_id = $1, status = 'used', activated_at = now() WHERE key_code = $2",
         [body.deviceId, body.activationKey]
       );
     } else if (key.assigned_device_id !== body.deviceId) {

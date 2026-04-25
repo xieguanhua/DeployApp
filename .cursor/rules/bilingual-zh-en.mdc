@@ -1,0 +1,19 @@
+---
+description: Enforce Chinese-English bilingual support for frontend and backend
+alwaysApply: true
+---
+
+# Bilingual Support (zh-CN / en-US)
+
+- All user-facing text must support both Chinese and English.
+- Frontend:
+  - Do not hardcode UI text in components; use i18n keys.
+  - New pages and features must provide both `zh-cn` and `en-us` locale entries.
+  - API requests should send `Accept-Language` (or an equivalent language header).
+- Backend:
+  - Do not return hardcoded single-language error messages in controller/service responses.
+  - Error and prompt messages must be localized based on request language (`Accept-Language`).
+  - Default language should be `zh-CN` when header is missing.
+- PR checklist:
+  - Added/updated i18n keys in both languages.
+  - Verified one zh flow and one en flow for affected endpoints/pages.

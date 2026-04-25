@@ -11,6 +11,12 @@ type LicensePayload = {
   nonce: string;
 };
 
+export type AuthRole = "admin" | "user";
+
+export type AuthClaims = {
+  role: AuthRole;
+};
+
 export function assertFreshTimestamp(timestampMs: number, skewSec: number) {
   const now = Date.now();
   const delta = Math.abs(now - timestampMs);
@@ -38,19 +44,24 @@ export async function signLicense(payload: LicensePayload, expiresInSec: number)
     .sign(key);
 }
 
-export async function verifyAdminJwt(token: string) {
-  const { adminJwtSecret } = useRuntimeConfig();
-  if (!adminJwtSecret) {
-    throw createError({ statusCode: 500, statusMessage: "ADMIN_JWT_SECRET 未配置" });
+export async function verifyAuthJwt(token: string) {
+  const { authJwtSecret, adminJwtSecret } = useRuntimeConfig();
+  const secretValue = authJwtSecret || adminJwtSecret;
+  if (!secretValue) {
+    throw createError({ statusCode: 500, statusMessage: "AUTH_JWT_SECRET 未配置" });
   }
-  const secret = new TextEncoder().encode(adminJwtSecret);
+  const secret = new TextEncoder().encode(secretValue);
   return jwtVerify(token, secret);
 }
 
-export async function signAdminJwt(subject: string) {
-  const { adminJwtSecret } = useRuntimeConfig();
-  const secret = new TextEncoder().encode(adminJwtSecret);
-  return new SignJWT({ role: "admin" })
+export async function signAuthJwt(subject: string, role: AuthRole) {
+  const { authJwtSecret, adminJwtSecret } = useRuntimeConfig();
+  const secretValue = authJwtSecret || adminJwtSecret;
+  if (!secretValue) {
+    throw createError({ statusCode: 500, statusMessage: "AUTH_JWT_SECRET 未配置" });
+  }
+  const secret = new TextEncoder().encode(secretValue);
+  return new SignJWT({ role })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject(subject)
     .setIssuedAt()

@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     for (let i = 0; i < body.count; i += 1) {
       const keyCode = generateActivationKey(body.prefix || "TA");
       await client.query(
-        "INSERT INTO activation_keys (key_code, product_code, client_type, price_cents, status) VALUES ($1, $2, $3, $4, 'new')",
+        "INSERT INTO activation_keys (key_code, product_code, client_type, price_cents, status) VALUES ($1, $2, $3, $4, 'unused')",
         [keyCode, product.product_code, product.client_type, product.price_cents]
       );
       keys.push(keyCode);

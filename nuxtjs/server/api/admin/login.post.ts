@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { signAdminJwt } from "../../utils/security";
+import { signAuthJwt } from "../../utils/security";
 import { validateAdminCredentials } from "../../utils/auth";
 
 const loginSchema = z.object({
@@ -14,6 +14,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: "账号或密码错误" });
   }
 
-  const token = await signAdminJwt(body.username);
+  const token = await signAuthJwt(body.username, "admin");
   return { ok: true, token };
 });
