@@ -254,6 +254,9 @@ export class MallService implements OnModuleInit {
     await this.prisma.$executeRawUnsafe(
       `INSERT INTO system_menus (id, parent_id, menu_type, menu_name, route_name, route_path, icon, icon_type, i18n_key, menu_order, keep_alive, constant, hide_in_menu, multi_tab, query, buttons, status)
        VALUES
+        (6, 0, '2', '首页', 'home', '/home', 'mdi:monitor-dashboard', '1', 'route.home', 1, false, false, false, false, '[]'::jsonb, '[]'::jsonb, '1'),
+        (7, 0, '2', '购买列表', 'purchase-orders', '/purchase-orders', 'mdi:clipboard-list-outline', '1', 'route.purchase-orders', 2, false, false, false, false, '[]'::jsonb, '[]'::jsonb, '1'),
+        (8, 0, '2', '个人中心', 'user-center', '/user-center', 'mdi:account-cog-outline', '1', 'route.user-center', 3, false, false, false, false, '[]'::jsonb, '[]'::jsonb, '1'),
         (1, 0, '1', '系统管理', 'manage', '/manage', 'carbon:cloud-service-management', '1', 'route.manage', 9, false, false, false, false, '[]'::jsonb, '[]'::jsonb, '1'),
         (2, 1, '2', '用户管理', 'manage_user', '/manage/user', 'ic:round-manage-accounts', '1', 'route.manage_user', 1, false, false, false, false, '[]'::jsonb, '[]'::jsonb, '1'),
         (3, 1, '2', '角色管理', 'manage_role', '/manage/role', 'carbon:user-role', '1', 'route.manage_role', 2, false, false, false, false, '[]'::jsonb, '[{"code":"role:add","desc":"新增角色"},{"code":"role:edit","desc":"编辑角色"}]'::jsonb, '1'),
@@ -263,6 +266,39 @@ export class MallService implements OnModuleInit {
     );
     await this.prisma.$executeRawUnsafe(
       `UPDATE system_menus SET route_path = '/products' WHERE route_name = 'manage_products'`
+    );
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE system_menus
+       SET route_path = CASE route_name
+         WHEN 'home' THEN '/home'
+         WHEN 'purchase-orders' THEN '/purchase-orders'
+         WHEN 'user-center' THEN '/user-center'
+         ELSE route_path
+       END
+       WHERE route_name IN ('home', 'purchase-orders', 'user-center')`
+    );
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO system_role_auth (role_id, home, menu_ids, button_codes, update_time)
+       SELECT r.id, 'home', (
+         SELECT COALESCE(jsonb_agg(m.id ORDER BY m.id), '[]'::jsonb)
+         FROM system_menus m
+         WHERE m.status = '1'
+       ), '[]'::jsonb, now()
+       FROM system_roles r
+       WHERE r.role_code = 'R_SUPER'
+         AND NOT EXISTS (SELECT 1 FROM system_role_auth a WHERE a.role_id = r.id)`
+    );
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO system_role_auth (role_id, home, menu_ids, button_codes, update_time)
+       SELECT r.id, 'home', (
+         SELECT COALESCE(jsonb_agg(m.id ORDER BY m.id), '[]'::jsonb)
+         FROM system_menus m
+         WHERE m.status = '1'
+           AND m.route_name IN ('home', 'purchase-orders', 'user-center')
+       ), '[]'::jsonb, now()
+       FROM system_roles r
+       WHERE r.role_code = 'R_USER'
+         AND NOT EXISTS (SELECT 1 FROM system_role_auth a WHERE a.role_id = r.id)`
     );
   }
 
@@ -321,6 +357,23 @@ export class MallService implements OnModuleInit {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT id, username, email, phone, password_hash, role, is_active FROM users WHERE phone = $1 LIMIT 1`,
       phone
+    );
+    return rows[0] || null;
+  }
+
+  async findUserByAccount(account: string) {
+    const text = (account || '').trim();
+    const normalizedPhone = text.replace(/[^\d+]/g, '');
+    const rows = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT id, username, email, phone, password_hash, role, is_active
+       FROM users
+       WHERE username = $1
+          OR LOWER(email) = LOWER($1)
+          OR phone = $1
+          OR regexp_replace(COALESCE(phone, ''), '[^0-9+]', '', 'g') = $2
+       LIMIT 1`,
+      text,
+      normalizedPhone
     );
     return rows[0] || null;
   }
@@ -931,6 +984,151 @@ export class MallService implements OnModuleInit {
   async getSystemAllPages() {
     const { records } = await this.listSystemMenus();
     return records.map((item: any) => item.routeName).filter(Boolean);
+  }
+
+  private getDefaultComponent(menu: any, hasVisibleChild: boolean, isTopLevel: boolean) {
+    if (menu.component && String(menu.component).trim()) return String(menu.component).trim();
+    if (hasVisibleChild || menu.menuType === '1') return 'layout.base';
+    if (isTopLevel) return `layout.base$view.${menu.routeName}`;
+    return `view.${menu.routeName}`;
+  }
+
+  private normalizeMenuMeta(menu: any) {
+    return {
+      title: menu.routeName,
+      i18nKey: menu.i18nKey || undefined,
+      icon: menu.icon || undefined,
+      order: Number(menu.order || 0),
+      keepAlive: !!menu.keepAlive,
+      href: menu.href || undefined,
+      hideInMenu: !!menu.hideInMenu,
+      activeMenu: menu.activeMenu || undefined,
+      multiTab: !!menu.multiTab,
+      fixedIndexInTab: menu.fixedIndexInTab ?? undefined,
+      query: Array.isArray(menu.query) ? menu.query : []
+    };
+  }
+
+  private buildAuthRoutesTree(records: any[], allowedIds?: Set<number>) {
+    const enabled = records.filter(item => item.status === '1');
+    const byId = new Map<number, any>(enabled.map(item => [Number(item.id), item]));
+    const childrenMap = new Map<number, any[]>();
+
+    enabled.forEach(item => {
+      const parentId = Number(item.parentId || 0);
+      if (!childrenMap.has(parentId)) {
+        childrenMap.set(parentId, []);
+      }
+      childrenMap.get(parentId)!.push(item);
+    });
+
+    const expandIds = new Set<number>();
+    if (allowedIds && allowedIds.size > 0) {
+      for (const id of allowedIds) {
+        let current: any = byId.get(id);
+        while (current) {
+          const cid = Number(current.id);
+          if (expandIds.has(cid)) break;
+          expandIds.add(cid);
+          current = byId.get(Number(current.parentId || 0));
+        }
+      }
+    }
+
+    const canInclude = (item: any) => {
+      if (!allowedIds || allowedIds.size === 0) return true;
+      return expandIds.has(Number(item.id));
+    };
+
+    const sortByOrder = (a: any, b: any) => Number(a.order || 0) - Number(b.order || 0) || Number(a.id) - Number(b.id);
+
+    const buildNode = (item: any): any | null => {
+      if (!canInclude(item)) return null;
+
+      const directChildren = (childrenMap.get(Number(item.id)) || []).sort(sortByOrder);
+      const children = directChildren.map(buildNode).filter(Boolean);
+      const hasVisibleChild = children.length > 0;
+
+      if (!item.routeName || !item.routePath) return null;
+
+      const isTopLevel = Number(item.parentId || 0) === 0;
+
+      return {
+        id: String(item.id),
+        name: item.routeName,
+        path: item.routePath,
+        component: this.getDefaultComponent(item, hasVisibleChild, isTopLevel),
+        meta: this.normalizeMenuMeta(item),
+        ...(hasVisibleChild ? { children } : {})
+      };
+    };
+
+    return (childrenMap.get(0) || []).sort(sortByOrder).map(buildNode).filter(Boolean);
+  }
+
+  private flattenRouteNames(routes: any[]) {
+    const names: string[] = [];
+    const dfs = (list: any[]) => {
+      for (const route of list) {
+        if (route?.name) names.push(String(route.name));
+        if (Array.isArray(route?.children) && route.children.length > 0) {
+          dfs(route.children);
+        }
+      }
+    };
+    dfs(routes || []);
+    return names;
+  }
+
+  private getRouteNameSetByRoleCode(records: any[], roleCode: string, menuIds: number[]) {
+    const routeNameToId = new Map<string, number>(records.map(item => [String(item.routeName), Number(item.id)]));
+    const roleIdSet = new Set<number>((menuIds || []).map(n => Number(n)).filter(Boolean));
+
+    if (roleIdSet.size > 0) {
+      return roleIdSet;
+    }
+
+    // 兼容未配置角色授权的历史数据：管理员默认可见全部，普通用户默认仅前台菜单。
+    if (roleCode === 'R_SUPER' || roleCode === 'R_ADMIN') {
+      return new Set<number>(records.filter(item => item.status === '1').map(item => Number(item.id)));
+    }
+
+    const fallbackNames = ['home', 'purchase-orders', 'user-center'];
+    const fallbackIds = fallbackNames.map(name => routeNameToId.get(name)).filter(Boolean) as number[];
+    return new Set<number>(fallbackIds);
+  }
+
+  private normalizeRouteHome(home: string | undefined, routes: any[]) {
+    const allNames = new Set(this.flattenRouteNames(routes));
+    if (home && allNames.has(home)) {
+      return home;
+    }
+    if (allNames.has('home')) {
+      return 'home';
+    }
+    return routes[0]?.name || 'home';
+  }
+
+  async getConstantRoutes() {
+    const { records } = await this.listSystemMenus();
+    const constants = records.filter(item => item.constant && item.status === '1');
+    return this.buildAuthRoutesTree(constants);
+  }
+
+  async getUserRoutesByRoleCode(roleCode: string) {
+    const roleAuth = await this.getRoleAuthByCode(roleCode);
+    const { records } = await this.listSystemMenus();
+    const authIds = this.getRouteNameSetByRoleCode(records, roleCode, roleAuth.menuIds || []);
+    const dynamicRecords = records.filter(item => !item.constant);
+    const routes = this.buildAuthRoutesTree(dynamicRecords, authIds);
+    const home = this.normalizeRouteHome(roleAuth.home, routes);
+    return { routes, home };
+  }
+
+  async isRouteExistByRoleCode(roleCode: string, routeName: string) {
+    const { routes } = await this.getUserRoutesByRoleCode(roleCode);
+    const names = new Set(this.flattenRouteNames(routes));
+    return names.has(routeName);
   }
 
   async upsertSystemUser(input: {

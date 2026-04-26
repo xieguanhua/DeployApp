@@ -235,6 +235,15 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'manage_products',
+        path: '/manage/products',
+        component: 'view.manage_products',
+        meta: {
+          title: 'manage_products',
+          i18nKey: 'route.manage_products'
+        }
+      },
+      {
         name: 'manage_role',
         path: '/manage/role',
         component: 'view.manage_role',
@@ -272,30 +281,6 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       }
     ]
-  },
-  {
-    name: 'manage-products',
-    path: '/products',
-    component: 'layout.base$view.manage_products',
-    meta: {
-      title: 'manage_products',
-      i18nKey: 'route.manage_products',
-      icon: 'mdi:package-variant-closed',
-      order: 8,
-      roles: ['R_ADMIN', 'R_SUPER'],
-      keepAlive: true
-    }
-  },
-  {
-    name: 'manage_products_legacy',
-    path: '/manage/products',
-    redirect: '/products',
-    meta: {
-      title: 'manage_products',
-      i18nKey: 'route.manage_products',
-      roles: ['R_ADMIN', 'R_SUPER'],
-      hideInMenu: true
-    }
   },
   {
     name: 'multi-menu',

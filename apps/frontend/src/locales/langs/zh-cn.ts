@@ -202,6 +202,7 @@ const local: App.I18n.Schema = {
     login: {
       common: {
         loginOrRegister: '登录 / 注册',
+        accountPlaceholder: '请输入账号（用户名/邮箱/手机号）',
         userNamePlaceholder: '请输入用户名',
         phonePlaceholder: '请输入手机号',
         emailPlaceholder: '请输入邮箱',

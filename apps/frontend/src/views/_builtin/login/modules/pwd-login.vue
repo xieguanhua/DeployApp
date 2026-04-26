@@ -13,44 +13,51 @@ defineOptions({
 
 const authStore = useAuthStore();
 const { toggleLoginModule } = useRouterPush();
-const { formRef, validate } = useAntdForm();
+const { formRef } = useAntdForm();
 
 interface FormModel {
-  userName: string;
+  account: string;
   password: string;
   rememberMe: boolean;
 }
 
 const model: FormModel = reactive({
-  userName: '',
+  account: '',
   password: '',
   rememberMe: getRememberMe()
 });
 
 const rules = computed<Record<keyof FormModel, App.Global.FormRule[]>>(() => {
   // inside computed to make locale reactive, if not apply i18n, you can define it without computed
-  const { formRules } = useFormRules();
+  const { formRules, defaultRequiredRule } = useFormRules();
 
   return {
-    userName: formRules.userName,
+    account: [defaultRequiredRule],
     password: formRules.pwd
   };
 });
 
 async function handleSubmit() {
-  await validate();
-  await authStore.login(model.userName, model.password, model.rememberMe);
+  await authStore.login(model.account.trim(), model.password, model.rememberMe);
 }
 </script>
 
 <template>
-  <AForm ref="formRef" :model="model" :rules="rules" @keyup.enter="handleSubmit">
-    <AFormItem name="userName">
-      <AInput v-model:value="model.userName" size="large" :placeholder="$t('page.login.common.userNamePlaceholder')" />
+  <AForm ref="formRef" :model="model" :rules="rules" autocomplete="on" @finish="handleSubmit">
+    <AFormItem name="account">
+      <AInput
+        v-model:value="model.account"
+        name="account"
+        autocomplete="username"
+        size="large"
+        :placeholder="$t('page.login.common.accountPlaceholder')"
+      />
     </AFormItem>
     <AFormItem name="password">
       <AInputPassword
         v-model:value="model.password"
+        name="password"
+        autocomplete="current-password"
         size="large"
         :placeholder="$t('page.login.common.passwordPlaceholder')"
       />
@@ -62,7 +69,7 @@ async function handleSubmit() {
           {{ $t('page.login.pwdLogin.forgetPassword') }}
         </AButton>
       </div>
-      <AButton type="primary" block size="large" shape="round" :loading="authStore.loginLoading" @click="handleSubmit">
+      <AButton type="primary" html-type="submit" block size="large" shape="round" :loading="authStore.loginLoading">
         {{ $t('common.confirm') }}
       </AButton>
       <div class="flex-y-center justify-between">

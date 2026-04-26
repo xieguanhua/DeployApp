@@ -122,6 +122,10 @@ export class MallController {
     throw this.err(lang, '账号格式错误，请输入手机号或邮箱', 'Invalid account format, please input phone or email', HttpStatus.BAD_REQUEST);
   }
 
+  private resolveRoleCode(role: JwtPayload['role']) {
+    return role === 'admin' ? 'R_SUPER' : 'R_USER';
+  }
+
   @Post('auth/register')
   async register(@Body() body: any, @Headers('accept-language') lang?: string) {
     const dto = z.object({ username: z.string().min(3).max(64), password: z.string().min(8).max(128) }).parse(body);
@@ -135,16 +139,19 @@ export class MallController {
   async login(@Body() body: any, @Headers('accept-language') lang?: string) {
     const dto = z
       .object({
+        account: z.string().min(1).optional(),
         username: z.string().min(1).optional(),
         userName: z.string().min(1).optional(),
+        email: z.string().min(1).optional(),
+        phone: z.string().min(1).optional(),
         password: z.string().min(8)
       })
       .parse(body);
-    const username = dto.username || dto.userName || '';
-    const user = await this.mallService.findUserByUsername(username);
-    if (!user || !user.is_active) throw this.err(lang, '账号或密码错误', 'Invalid username or password', HttpStatus.UNAUTHORIZED);
+    const account = dto.account || dto.username || dto.userName || dto.email || dto.phone || '';
+    const user = await this.mallService.findUserByAccount(account);
+    if (!user || !user.is_active) throw this.err(lang, '账号或密码错误', 'Invalid account or password', HttpStatus.UNAUTHORIZED);
     const ok = await this.mallService.verifyUserPassword(user, dto.password);
-    if (!ok) throw this.err(lang, '账号或密码错误', 'Invalid username or password', HttpStatus.UNAUTHORIZED);
+    if (!ok) throw this.err(lang, '账号或密码错误', 'Invalid account or password', HttpStatus.UNAUTHORIZED);
     const tokens = this.buildAuthTokens({ uid: Number(user.id), role: user.role, username: user.username });
     return { ok: true, ...tokens, user: { id: Number(user.id), username: user.username, role: user.role } };
   }
@@ -294,7 +301,7 @@ export class MallController {
   @Get('auth/getUserInfo')
   async getUserInfo(@Headers('authorization') auth?: string, @Headers('accept-language') lang?: string) {
     const payload = this.assertRoleAny(auth, lang);
-    const roleCode = payload.role === 'admin' ? 'R_SUPER' : 'R_USER';
+    const roleCode = this.resolveRoleCode(payload.role);
     const roleAuth = await this.mallService.getRoleAuthByCode(roleCode);
     return {
       ok: true,
@@ -303,6 +310,33 @@ export class MallController {
       roles: [roleCode],
       buttons: roleAuth.buttonCodes || []
     };
+  }
+
+  @Get('route/getConstantRoutes')
+  async getConstantRoutes() {
+    return { ok: true, data: await this.mallService.getConstantRoutes() };
+  }
+
+  @Get('route/getUserRoutes')
+  async getUserRoutes(@Headers('authorization') auth?: string, @Headers('accept-language') lang?: string) {
+    const payload = this.assertRoleAny(auth, lang);
+    const roleCode = this.resolveRoleCode(payload.role);
+    return { ok: true, ...(await this.mallService.getUserRoutesByRoleCode(roleCode)) };
+  }
+
+  @Get('route/isRouteExist')
+  async isRouteExist(
+    @Query('routeName') routeName = '',
+    @Headers('authorization') auth?: string,
+    @Headers('accept-language') lang?: string
+  ) {
+    const payload = this.assertRoleAny(auth, lang);
+    if (!routeName) {
+      throw this.err(lang, '缺少路由名称', 'Missing route name', HttpStatus.BAD_REQUEST);
+    }
+    const roleCode = this.resolveRoleCode(payload.role);
+    const exists = await this.mallService.isRouteExistByRoleCode(roleCode, routeName);
+    return { ok: true, data: exists };
   }
 
   @Post('auth/refreshToken')
@@ -832,9 +866,15 @@ export class MallController {
   }
 
   private assertRoleAny(auth: string | undefined, lang?: string) {
-    if (!auth?.startsWith('Bearer ')) throw this.err(lang, '缺少认证令牌', 'Missing authorization token', HttpStatus.UNAUTHORIZED);
+    if (!auth?.startsWith('Bearer ')) {
+      throw this.err(lang, '缺少认证令牌', 'Missing authorization token', HttpStatus.UNAUTHORIZED);
+    }
     const token = auth.slice('Bearer '.length);
     const secret = this.configService.get<string>('AUTH_JWT_SECRET') || this.configService.get<string>('JWT_ACCESS_SECRET') || 'dev-secret';
-    return this.jwtService.verify<JwtPayload>(token, { secret });
+    try {
+      return this.jwtService.verify<JwtPayload>(token, { secret });
+    } catch (error) {
+      throw error;
+    }
   }
 }

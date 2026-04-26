@@ -202,6 +202,7 @@ const local: App.I18n.Schema = {
     login: {
       common: {
         loginOrRegister: 'Login / Register',
+        accountPlaceholder: 'Please enter account (username/email/phone)',
         userNamePlaceholder: 'Please enter user name',
         phonePlaceholder: 'Please enter phone number',
         emailPlaceholder: 'Please enter email',
